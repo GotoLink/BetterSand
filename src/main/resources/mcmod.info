@@ -1,0 +1,15 @@
+[
+        {
+            "modid": "BetterSand",
+            "name": "Better Sand",
+            "description": "Changes sand into a mix of fluid and solid",
+            "version": "$version",
+            "mcversion": "$mcversion",
+            "logoFile": "",
+            "url": "",
+            "updateUrl": "",
+            "authorList": ["GotoLink"],
+            "credits": ""
+        }
+]
+        
