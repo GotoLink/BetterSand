@@ -101,7 +101,7 @@ public class BetterSand {
             for(int x = xMin; x < xMax; x++) {
                 for (int z = zMin; z < zMax; z++) {
                     int y = populate.world.getTopSolidOrLiquidBlock(x, z) - 1;
-                    if (populate.world.getBlock(x, y, z).getMaterial() == Material.sand && populate.world.getBlockMetadata(x, y, z) == 0 && isAirAround(populate.world, x, y, z)) {
+                    if (populate.world.getBlock(x, y, z) == Blocks.sand && populate.world.getBlockMetadata(x, y, z) == 0 && isAirAround(populate.world, x, y, z)) {
                         populate.world.setBlock(x, y, z, sandUnit, (UNIT - 1), 3);
                     }
                 }
