@@ -12,6 +12,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.material.MaterialLiquid;
+import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
@@ -159,6 +160,8 @@ public class BetterSand {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onSandBreak(BlockEvent.BreakEvent breakEvent){
         if(breakEvent.block == Blocks.sand && breakEvent.world.getBlockMetadata(breakEvent.x, breakEvent.y, breakEvent.z) == 0){
+            if(breakEvent.getPlayer()!=null && EnchantmentHelper.getSilkTouchModifier(breakEvent.getPlayer()))
+                return;
             breakEvent.setCanceled(true);
             breakEvent.world.setBlock(breakEvent.x, breakEvent.y, breakEvent.z, sandUnit, UNIT-1, 3);
         }
