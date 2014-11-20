@@ -33,7 +33,7 @@ import java.util.Arrays;
 import java.util.Random;
 
 @Mod(modid="BetterSand", name= "Better Sand")
-public class BetterSand {
+public final class BetterSand {
     /**
      * The name used for flowing sand, and corresponding fluid in registries
      */
