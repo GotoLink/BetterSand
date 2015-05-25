@@ -5,7 +5,6 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.eventhandler.Event;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.registry.GameData;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.MapColor;
@@ -63,20 +62,21 @@ public final class BetterSand {
             Configuration config = new Configuration(event.getSuggestedConfigurationFile());
             generate = config.get("World Generation", "Modded sand generate in world", generate, "Select dimension ids in which special sand will generate. Default is overworld.").getIntList();
             craft = config.getBoolean("Craft sand bucket into sand", "Crafting", craft, "Set to false to remove crafting recipe");
-            config.save();
+            if(config.hasChanged())
+                config.save();
         }catch (Exception ignored){}
         Arrays.sort(generate);
-        Fluid liquidSand;
-        if(!FluidRegistry.isFluidRegistered(REGISTRY)) {
-            liquidSand = new BlockFluid(REGISTRY).setDensity(3000).setViscosity(4000);
-            FluidRegistry.registerFluid(liquidSand);
-        }else{
+        Fluid liquidSand = new BlockFluid(REGISTRY).setDensity(3000).setViscosity(4000);
+        if(event.getSide().isClient()){
+            liquidSand.setIcons(Blocks.sand.getIcon(0, 0));
+        }
+        if(!FluidRegistry.registerFluid(liquidSand)) {
             liquidSand = FluidRegistry.getFluid(REGISTRY);
         }
         if(liquidSand.canBePlacedInWorld()){
             sandUnit = liquidSand.getBlock();
         }else{
-            sandUnit = new Finite(liquidSand).setQuantaPerBlock(UNIT).setBlockTextureName("sand");
+            sandUnit = new Finite(liquidSand).setQuantaPerBlock(UNIT).setBlockTextureName(REGISTRY);
             GameRegistry.registerBlock(sandUnit, REGISTRY);
         }
         Item sandBucket = new BucketUnit(sandUnit, UNIT).setUnlocalizedName("bucketSand").setContainerItem(FluidContainerRegistry.EMPTY_BUCKET.getItem()).setTextureName("bucket_sand");
@@ -168,7 +168,6 @@ public final class BetterSand {
     public static class BlockFluid extends Fluid{
         public BlockFluid(String name) {
             super(name);
-            setIcons(GameData.getBlockRegistry().getObject(name).getIcon(0, 0));
         }
 
         @Override

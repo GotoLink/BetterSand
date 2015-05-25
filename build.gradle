@@ -23,7 +23,7 @@ group= "bettersand"
 archivesBaseName = "BetterSand"
 
 minecraft {
-    version = "1.7.10-10.13.2.1230"
+    version = "1.7.10-10.13.2.1286"
     runDir = "eclipse"
 }
 
