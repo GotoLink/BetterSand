@@ -1,12 +1,14 @@
 package bettersand;
 
-import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.common.eventhandler.Event;
-import cpw.mods.fml.common.eventhandler.EventPriority;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.registry.GameData;
-import cpw.mods.fml.common.registry.GameRegistry;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.util.*;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.eventhandler.Event;
+import net.minecraftforge.fml.common.eventhandler.EventPriority;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.registry.GameData;
+import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.Material;
@@ -15,9 +17,6 @@ import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
@@ -79,7 +78,7 @@ public final class BetterSand {
             sandUnit = new Finite(liquidSand).setQuantaPerBlock(UNIT).setBlockTextureName("sand");
             GameRegistry.registerBlock(sandUnit, REGISTRY);
         }
-        Item sandBucket = new BucketUnit(sandUnit, UNIT).setUnlocalizedName("bucketSand").setContainerItem(FluidContainerRegistry.EMPTY_BUCKET.getItem()).setTextureName("bucket_sand");
+        Item sandBucket = new BucketUnit(sandUnit, UNIT).setUnlocalizedName("bucketSand").setContainerItem(FluidContainerRegistry.EMPTY_BUCKET.getItem());
         if(FluidContainerRegistry.registerFluidContainer(liquidSand, new ItemStack(sandBucket), FluidContainerRegistry.EMPTY_BUCKET)){
             GameRegistry.registerItem(sandBucket, REGISTRY+"Bucket");
             if(craft)
@@ -94,31 +93,38 @@ public final class BetterSand {
      */
     @SubscribeEvent
     public void onPopulating(PopulateChunkEvent.Post populate){
-        if(Arrays.binarySearch(generate, populate.world.provider.dimensionId) >= 0){
+        if(Arrays.binarySearch(generate, populate.world.provider.getDimensionId()) >= 0){
             int xMin = populate.chunkX * 16 + 8, xMax = xMin + 16;
             int zMin = populate.chunkZ * 16 + 8, zMax = zMin + 16;
             for(int x = xMin; x < xMax; x++) {
                 for (int z = zMin; z < zMax; z++) {
-                    int y = populate.world.getTopSolidOrLiquidBlock(x, z) - 1;
-                    if (populate.world.getBlock(x, y, z) == Blocks.sand && populate.world.getBlockMetadata(x, y, z) == 0 && isAirAround(populate.world, x, y, z)) {
-                        populate.world.setBlock(x, y, z, sandUnit, (UNIT - 1), 3);
+                    BlockPos pos = populate.world.getTopSolidOrLiquidBlock(new BlockPos(x, 0, z)).down();
+                    IBlockState state = populate.world.getBlockState(pos);
+                    if (isDefaultSand(state) && isAirAround(populate.world, pos)) {
+                        populate.world.setBlockState(pos, getFilledSand());
                     }
                 }
             }
         }
     }
 
+    private IBlockState getFilledSand(){
+        return sandUnit.getBlockState().getBaseState().withProperty(Finite.LEVEL, UNIT - 1);
+    }
+
+    private boolean isDefaultSand(IBlockState state){
+        return state.getBlock() == Blocks.sand && state.getBlock().getMetaFromState(state) == 0;
+    }
+
     /**
      * Check for air blocks on all sides.
      *
      * @param world to search in
-     * @param x to search around
-     * @param y to search around
-     * @param z to search around
+     * @param pos to search around
      * @return true if at least on side is adjacent to an air block
      */
-    private boolean isAirAround(World world, int x, int y, int z){
-        return world.isAirBlock(x-1, y, z) || world.isAirBlock(x+1, y, z) || world.isAirBlock(x, y, z-1) || world.isAirBlock(x, y, z+1);
+    private boolean isAirAround(World world, BlockPos pos){
+        return world.isAirBlock(pos.west()) || world.isAirBlock(pos.east()) || world.isAirBlock(pos.north()) || world.isAirBlock(pos.south());
     }
 
     /**
@@ -137,14 +143,11 @@ public final class BetterSand {
     @SubscribeEvent(priority = EventPriority.LOW)
     public void onBucketFill(FillBucketEvent event){
         if (event.target.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && FluidContainerRegistry.isEmptyContainer(event.current)) {
-            int i = event.target.blockX;
-            int j = event.target.blockY;
-            int k = event.target.blockZ;
-            Block block = event.world.getBlock(i, j, k);
+            Block block = event.world.getBlockState(event.target.getBlockPos()).getBlock();
             if(block.getMaterial() == SAND_MATERIAL && block instanceof IFluidBlock) {
-                ItemStack result = FluidContainerRegistry.fillFluidContainer(((IFluidBlock) block).drain(event.world, i, j, k, false), event.current);
+                ItemStack result = FluidContainerRegistry.fillFluidContainer(((IFluidBlock) block).drain(event.world, event.target.getBlockPos(), false), event.current);
                 if(result!=null) {
-                    ((IFluidBlock) block).drain(event.world, i, j, k, true);
+                    ((IFluidBlock) block).drain(event.world, event.target.getBlockPos(), true);
                     event.setResult(Event.Result.ALLOW);
                     event.result = result;
                 }
@@ -157,11 +160,11 @@ public final class BetterSand {
      */
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onSandBreak(BlockEvent.BreakEvent breakEvent){
-        if(breakEvent.block == Blocks.sand && breakEvent.world.getBlockMetadata(breakEvent.x, breakEvent.y, breakEvent.z) == 0){
+        if(isDefaultSand(breakEvent.state)){
             if(breakEvent.getPlayer()!=null && EnchantmentHelper.getSilkTouchModifier(breakEvent.getPlayer()))
                 return;
             breakEvent.setCanceled(true);
-            breakEvent.world.setBlock(breakEvent.x, breakEvent.y, breakEvent.z, sandUnit, UNIT-1, 3);
+            breakEvent.world.setBlockState(breakEvent.pos, getFilledSand());
         }
     }
 
@@ -181,19 +184,21 @@ public final class BetterSand {
 
         public Finite(Fluid fluid) {
             super(fluid, SAND_MATERIAL);
+            setRenderLayer(EnumWorldBlockLayer.CUTOUT);//Check this ?
         }
 
         @Override
-        public void updateTick(World world, int x, int y, int z, Random rand){
-            if(world.getBlock(x, y+1, z).getMaterial() == Material.sand){
-                world.setBlock(x, y+1, z, this, this.quantaPerBlock-1, 3);
+        public void updateTick(World world, BlockPos pos, IBlockState state, Random rand){
+            if(world.getBlockState(pos.up()).getBlock().getMaterial() == Material.sand){
+                world.setBlockState(pos.up(), state.withProperty(LEVEL, quantaPerBlock-1));
             }
-            super.updateTick(world, x, y, z, rand);
+            super.updateTick(world, pos, state, rand);
         }
+
         @Override
-        public AxisAlignedBB getCollisionBoundingBoxFromPool(World world, int x, int y, int z)
+        public AxisAlignedBB getCollisionBoundingBox(World world, BlockPos pos, IBlockState state)
         {
-            return AxisAlignedBB.getBoundingBox((double)x, (double)y, (double)z, (double)x + 1.0D, (double)y + (double) getFilledPercentage(world, x, y, z)*0.65F, (double)z + 1.0D);
+            return new AxisAlignedBB(pos, pos).addCoord(1, getFilledPercentage(world, pos) * 0.65D, 1);
         }
     }
 }

@@ -2,6 +2,7 @@ package bettersand;
 
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemBucket;
+import net.minecraft.util.BlockPos;
 import net.minecraft.world.World;
 
 /**
@@ -20,12 +21,12 @@ public class BucketUnit extends ItemBucket{
     }
 
     @Override
-    public boolean tryPlaceContainedLiquid(World world, int x, int y, int z)
+    public boolean tryPlaceContainedLiquid(World world, BlockPos pos)
     {
-        Block block = world.getBlock(x, y, z);
+        Block block = world.getBlockState(pos).getBlock();
         boolean flag = !block.getMaterial().isSolid();
 
-        if (!block.isAir(world, x, y, z) && !flag)
+        if (!block.isAir(world, pos) && !flag)
         {
             return false;
         }
@@ -33,9 +34,9 @@ public class BucketUnit extends ItemBucket{
         {
             if (!world.isRemote && flag && !block.getMaterial().isLiquid())
             {
-                world.func_147480_a(x, y, z, true);
+                world.destroyBlock(pos, true);
             }
-            world.setBlock(x, y, z, this.fluid, this.quantity, 3);
+            world.setBlockState(pos, this.fluid.getBlockState().getBaseState().withProperty(BetterSand.Finite.LEVEL, this.quantity));
 
             return true;
         }
